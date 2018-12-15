@@ -110,7 +110,7 @@ func scrapeSmi() {
 		data := strings.Split(string(line), ", ")
 
 		// We should have an output field for each stat plus the index
-		if len(data) != len(stats) + 1 {
+		if len(data) != len(stats)+1 {
 			log.Fatalf("invalid nvidia-smi output: %s", line)
 		}
 
