@@ -79,12 +79,12 @@ func scrapeSmi() {
 
 	queryValues := []string{"index"}
 	for _, stat := range stats {
+		prometheus.MustRegister(stat.metric)
 		queryValues = append(queryValues, stat.name)
 	}
 	queryOpt := fmt.Sprintf("--query-gpu=%s", strings.Join(queryValues, ","))
 
 	seconds := fmt.Sprintf("%.0f", interval.Seconds())
-
 	if seconds == "0" {
 		log.Fatalf("interval must be at least 1 second")
 	}
@@ -105,7 +105,15 @@ func scrapeSmi() {
 
 		line = line[:len(line)-1] // drop the \n
 
+		// This isn't the best CSV parsing, but none of the data
+		// should ever contain a "," or need anything fancier.
 		data := strings.Split(string(line), ", ")
+
+		// We should have an output field for each stat plus the index
+		if len(data) != len(stats) + 1 {
+			log.Fatalf("invalid nvidia-smi output: %s", line)
+		}
+
 		gpu := data[0]
 		for i, stat := range stats {
 			value, err := strconv.ParseFloat(data[i+1], 64)
@@ -116,17 +124,13 @@ func scrapeSmi() {
 		}
 	}
 
-	// nvidia-smi should never die, but if we get here, exit 1.
+	// If we end up here, something went horribly wrong with nvidia-smi
 	cmd.Wait()
 	os.Exit(1)
 }
 
 func main() {
 	flag.Parse()
-
-	for _, stat := range stats {
-		prometheus.MustRegister(stat.metric)
-	}
 
 	go scrapeSmi()
 
